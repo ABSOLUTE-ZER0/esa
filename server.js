@@ -60,10 +60,11 @@ app.put("/rest/v1/users/:uuid/cart", async (req, res) => {
 
   await Product.findOne({
     productId: productId
-  }, function (err, result) {
+  }, async function (err, result) {
     if (quantity > result.availableQuantity) {
       res.send("Quantity greater than available")
     }
+    await Product.updateOne({productId: productId}, { availableQuantity: result.availableQuantity-quantity })
     amount = result.price * quantity
   }).exec();
 
