@@ -64,8 +64,10 @@ app.put("/rest/v1/users/:uuid/cart", async (req, res) => {
     if (quantity > result.availableQuantity) {
       res.send("Quantity greater than available")
     }
-    await Product.updateOne({productId: productId}, { availableQuantity: result.availableQuantity-quantity })
-    amount = result.price * quantity
+    else{
+      await Product.updateOne({productId: productId}, { availableQuantity: result.availableQuantity-quantity }).exec()
+      amount = result.price * quantity
+    }
   }).exec();
 
   const temp = {
