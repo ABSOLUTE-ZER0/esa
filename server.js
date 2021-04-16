@@ -57,48 +57,62 @@ app.put("/rest/v1/users/:uuid/cart", async (req, res) => {
   const quantity = req.body.quantity
   var items = [];
   let amount;
+  var productNotFound = false;
 
-  await Product.findOne({
-    productId: productId
-  }, async function (err, result) {
-    if (quantity > result.availableQuantity) {
-      res.send("Quantity greater than available")
+
+  try {
+    await Product.findOne({
+      productId: productId
+    }, async function (err, result) {
+      try {
+        if (quantity > result.availableQuantity) {
+          res.send("Quantity greater than available")
+        } else {
+          await Product.updateOne({
+            productId: productId
+          }, {
+            availableQuantity: result.availableQuantity - quantity
+          }).exec()
+          amount = result.price * quantity
+        }
+      } catch (error) {
+        productNotFound = true
+        res.status(500).send("Server Error");
+      }
+    }).exec();
+
+    const temp = {
+      productId: productId,
+      quantity: quantity,
+      amount: amount
     }
-    else{
-      await Product.updateOne({productId: productId}, { availableQuantity: result.availableQuantity-quantity }).exec()
-      amount = result.price * quantity
-    }
-  }).exec();
 
-  const temp = {
-    productId: productId,
-    quantity: quantity,
-    amount: amount
-  }
+    items.push(temp)
 
-  items.push(temp)
-
-  await Cart.findOne({
-    userId: userId
-  }, (err, result) => {
-    if (result != null) {
-      result.item.forEach(item => {
-        items.push(item)
-      });
-    }
-  })
-
-  const result = await Cart.updateOne({
-    userId: userId
-  }, {
-    item: items
-  });
-  if (result.n == 0) {
-    const newCart = new Cart({
-      userId: userId,
-      item: items
+    await Cart.findOne({
+      userId: userId
+    }, (err, result) => {
+      if (result != null) {
+        result.item.forEach(item => {
+          items.push(item)
+        });
+      }
     })
-    newCart.save()
+
+    const result = await Cart.updateOne({
+      userId: userId
+    }, {
+      item: items
+    });
+    if (!productNotFound && result.n == 0) {
+      const newCart = new Cart({
+        userId: userId,
+        item: items
+      })
+      newCart.save()
+    }
+  } catch (error) {
+    res.status(500).send("Server Error");
   }
 });
 
